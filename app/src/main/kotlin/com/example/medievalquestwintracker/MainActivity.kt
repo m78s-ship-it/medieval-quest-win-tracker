@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Crown
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Star
@@ -56,6 +57,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -100,7 +103,7 @@ fun MedievalQuestWinTrackerTheme(content: @Composable () -> Unit) {
 
 @Composable
 fun MedievalQuestWinTrackerApp() {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val storageManager = remember { StorageManager(context) }
     val scope = rememberCoroutineScope()
 
@@ -109,6 +112,7 @@ fun MedievalQuestWinTrackerApp() {
 
     var showAddDialog by remember { mutableStateOf(false) }
     var showLevelUpDialog by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
     var levelUpNotification by remember { mutableStateOf("") }
 
     val completedQuests = quests.count { it.completed }
@@ -150,6 +154,31 @@ fun MedievalQuestWinTrackerApp() {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Header with About Button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "⚔️ Quest Log",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFFD4AF37)
+                )
+                Button(
+                    onClick = { showAboutDialog = true },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF1E1A26),
+                        contentColor = Color(0xFFD4AF37)
+                    ),
+                    modifier = Modifier.size(44.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                ) {
+                    Icon(Icons.Default.Info, contentDescription = "About")
+                }
+            }
+
             // Warrior Card - Ritterkarte mit Design
             WarriorCard(playerStats)
 
@@ -245,7 +274,7 @@ fun MedievalQuestWinTrackerApp() {
 
             // Quest Log Header
             Text(
-                text = "📜 Quest Log",
+                text = "📖 Quest Log",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFFF4EADC)
@@ -351,6 +380,13 @@ fun MedievalQuestWinTrackerApp() {
             newLevel = level,
             notification = levelUpNotification,
             onDismiss = { showLevelUpDialog = false }
+        )
+    }
+
+    // About Dialog
+    if (showAboutDialog) {
+        AboutDialog(
+            onDismiss = { showAboutDialog = false }
         )
     }
 }
@@ -585,7 +621,7 @@ fun QuestCardUI(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (quest.completed) Color(0xFF2A2432) else Color(0xFF1E1A26)
+            containerColor = if (quest.completed) Color(0xFF2A2432) else Color(0xFF1E1A26")
         ),
         shape = RoundedCornerShape(18.dp)
     ) {
@@ -754,6 +790,159 @@ fun LevelUpDialog(
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD4AF37))
                 ) {
                     Text("Continue", color = Color(0xFF1A1200), fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AboutDialog(
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1A26))
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    Text(
+                        text = "ℹ️ About Quest Log",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFF4EADC)
+                    )
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                item {
+                    Text(
+                        text = "Developed by Maik Schulz",
+                        color = Color(0xFFD4AF37),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                item {
+                    Text(
+                        text = "v1.0",
+                        color = Color(0xFFD8C89A),
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                item {
+                    Text(
+                        text = "Legal Notice",
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFF4EADC)
+                    )
+                }
+
+                item {
+                    Text(
+                        text = "© 2024 Maik Schulz. All rights reserved.",
+                        color = Color(0xFFD8C89A),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                item {
+                    Text(
+                        text = "License: MIT License",
+                        color = Color(0xFFD8C89A),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                item {
+                    Text(
+                        text = "Terms of Use",
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFFF4EADC),
+                        fontSize = 12.sp
+                    )
+                }
+
+                item {
+                    Text(
+                        text = "This app is provided as-is for personal use. The developer is not responsible for any damages or losses resulting from the use of this application.",
+                        color = Color(0xFFD8C89A),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                item {
+                    Text(
+                        text = "Privacy Notice",
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFFF4EADC),
+                        fontSize = 12.sp
+                    )
+                }
+
+                item {
+                    Text(
+                        text = "Quest Log stores all data locally on your device. No data is sent to external servers.",
+                        color = Color(0xFFD8C89A),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                item {
+                    Text(
+                        text = "Disclaimer",
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFFF4EADC),
+                        fontSize = 12.sp
+                    )
+                }
+
+                item {
+                    Text(
+                        text = "This application is designed to help track personal achievements. It is not a substitute for professional mental health or productivity advice.",
+                        color = Color(0xFFD8C89A),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                item {
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD4AF37))
+                    ) {
+                        Text("Close", color = Color(0xFF1A1200), fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

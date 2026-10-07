@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Medieval Quest Win Tracker</string>
+    <string name="app_name">⚔️ Quest Log</string>
+    <string name="developer_name">Developed by Maik Schulz</string>
+    <string name="app_version">v1.0</string>
+    
+    <!-- Legal -->
+    <string name="legal_title">Legal Notice</string>
+    <string name="license_info">Quest Log is released under the MIT License.</string>
+    <string name="terms_of_use">Terms of Use: This app is provided as-is for personal use. The developer is not responsible for any damages or losses resulting from the use of this application.</string>
+    <string name="privacy_notice">Privacy Notice: Quest Log stores all data locally on your device. No data is sent to external servers.</string>
+    <string name="copyright">© 2024 Maik Schulz. All rights reserved.</string>
+    <string name="disclaimer">Disclaimer: This application is designed to help track personal achievements. It is not a substitute for professional mental health or productivity advice.</string>
 </resources>
