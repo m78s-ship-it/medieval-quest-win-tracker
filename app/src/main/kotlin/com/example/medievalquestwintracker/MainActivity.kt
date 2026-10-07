@@ -1,13 +1,5 @@
 package com.example.medievalquestwintracker
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -24,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -41,7 +34,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Dialog
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -58,22 +50,21 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -109,7 +100,7 @@ fun MedievalQuestWinTrackerTheme(content: @Composable () -> Unit) {
 
 @Composable
 fun MedievalQuestWinTrackerApp() {
-    val context = LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     val storageManager = remember { StorageManager(context) }
     val scope = rememberCoroutineScope()
 
@@ -118,15 +109,13 @@ fun MedievalQuestWinTrackerApp() {
 
     var showAddDialog by remember { mutableStateOf(false) }
     var showLevelUpDialog by remember { mutableStateOf(false) }
-    var customQuestTitle by remember { mutableStateOf(TextFieldValue()) }
-    var lastLevelUpXp by remember { mutableStateOf(0) }
+    var levelUpNotification by remember { mutableStateOf("") }
 
     val completedQuests = quests.count { it.completed }
     val currentXp = playerStats.xp
     val level = playerStats.level
     val currentXpForLevel = playerStats.getXpForNextLevel()
     val levelProgress = playerStats.getLevelProgress()
-
     val completedTodayCount = quests.count { it.completed && isSameDayAsToday(it.completedDate) }
     val hasDailyQuestToday = quests.any { it.isDaily && isSameDayAsToday(it.completedDate) }
 
@@ -135,7 +124,6 @@ fun MedievalQuestWinTrackerApp() {
             FloatingActionButton(
                 onClick = {
                     showAddDialog = true
-                    SoundManager.playButtonClickSound(context)
                 },
                 containerColor = Color(0xFFD4AF37),
                 contentColor = Color(0xFF1A1200)
@@ -162,26 +150,30 @@ fun MedievalQuestWinTrackerApp() {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Warrior Card - Ritterkarte mit Design
             WarriorCard(playerStats)
 
+            // Level Progress Bar
             LevelProgressCard(level, currentXp, currentXpForLevel, levelProgress)
 
+            // Stats Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                StatCard("Wins", "$completedQuests", Color(0xFFD4AF37))
-                StatCard("Streak", "${playerStats.streak}", Color(0xFF8B1E3F))
-                StatCard("Today", "$completedTodayCount", Color(0xFF2C7A7B))
+                StatCard("⚔️ Wins", "$completedQuests", Color(0xFFD4AF37))
+                StatCard("🔥 Streak", "${playerStats.streak}", Color(0xFF8B1E3F))
+                StatCard("📅 Today", "$completedTodayCount", Color(0xFF2C7A7B))
             }
 
+            // Daily Quest Prompt
             if (!hasDailyQuestToday) {
-                DailyQuestPrompt(
+                DailyQuestCard(
                     onAddDaily = {
                         scope.launch {
                             val newDaily = QuestData(
                                 id = (quests.maxOfOrNull { it.id } ?: 0) + 1,
-                                title = "Daily Challenge",
+                                title = "Daily Challenge: Complete One Quest",
                                 xp = 50,
                                 isDaily = true
                             )
@@ -192,9 +184,9 @@ fun MedievalQuestWinTrackerApp() {
                 )
             }
 
+            // Main Action Button
             Button(
                 onClick = {
-                    SoundManager.playButtonClickSound(context)
                     val incompleteQuest = quests.firstOrNull { !it.completed }
                     if (incompleteQuest != null) {
                         scope.launch {
@@ -207,11 +199,11 @@ fun MedievalQuestWinTrackerApp() {
                             }
                             storageManager.saveQuests(updatedQuests)
 
-                            // Update player stats
                             val newXp = currentXp + incompleteQuest.xp
-                            val wasLeveledUp = (newXp / currentXpForLevel) > (currentXp / currentXpForLevel)
+                            val xpForLevel = playerStats.getXpForNextLevel()
+                            val wasLeveledUp = newXp >= xpForLevel
                             val newLevel = if (wasLeveledUp) level + 1 else level
-                            val xpAfterLevel = if (wasLeveledUp) newXp - currentXpForLevel else newXp
+                            val xpAfterLevel = if (wasLeveledUp) newXp - xpForLevel else newXp
 
                             val newStreak = if (isSameDayAsToday(playerStats.lastQuestDate)) {
                                 playerStats.streak
@@ -230,10 +222,8 @@ fun MedievalQuestWinTrackerApp() {
                             storageManager.savePlayerStats(newStats)
 
                             if (wasLeveledUp) {
-                                SoundManager.playLevelUpSound(context)
+                                levelUpNotification = "Level $newLevel!"
                                 showLevelUpDialog = true
-                            } else {
-                                SoundManager.playQuestCompleteSound(context)
                             }
                         }
                     }
@@ -243,27 +233,35 @@ fun MedievalQuestWinTrackerApp() {
                     containerColor = Color(0xFFD4AF37),
                     contentColor = Color(0xFF1A1200)
                 ),
-                shape = RoundedCornerShape(18.dp)
+                shape = RoundedCornerShape(18.dp),
+                enabled = quests.any { !it.completed }
             ) {
-                Text("⚔️ Complete Next Quest", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(
+                    "⚔️ COMPLETE NEXT QUEST",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
             }
 
+            // Quest Log Header
             Text(
-                text = "Quest Log",
+                text = "📜 Quest Log",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFFF4EADC)
             )
 
+            // Quest List
             if (quests.isEmpty()) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1820))
                 ) {
                     Text(
-                        text = "No quests yet. Your trail is empty.",
+                        text = "Your adventure awaits! No quests yet.",
                         modifier = Modifier.padding(20.dp),
-                        color = Color(0xFFD8C89A)
+                        color = Color(0xFFD8C89A),
+                        textAlign = TextAlign.Center
                     )
                 }
             } else {
@@ -271,7 +269,7 @@ fun MedievalQuestWinTrackerApp() {
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(quests) { quest ->
-                        QuestCard(
+                        QuestCardUI(
                             quest = quest,
                             onToggle = {
                                 scope.launch {
@@ -308,10 +306,8 @@ fun MedievalQuestWinTrackerApp() {
                                         storageManager.savePlayerStats(newStats)
 
                                         if (wasLeveledUp) {
-                                            SoundManager.playLevelUpSound(context)
+                                            levelUpNotification = "Level $newLevel!"
                                             showLevelUpDialog = true
-                                        } else {
-                                            SoundManager.playQuestCompleteSound(context)
                                         }
                                     }
                                 }
@@ -329,6 +325,7 @@ fun MedievalQuestWinTrackerApp() {
         }
     }
 
+    // Add Quest Dialog
     if (showAddDialog) {
         AddQuestDialog(
             onDismiss = { showAddDialog = false },
@@ -343,15 +340,16 @@ fun MedievalQuestWinTrackerApp() {
                     val updatedQuests = quests + newQuest
                     storageManager.saveQuests(updatedQuests)
                 }
-                customQuestTitle = TextFieldValue()
                 showAddDialog = false
             }
         )
     }
 
+    // Level Up Dialog
     if (showLevelUpDialog) {
         LevelUpDialog(
             newLevel = level,
+            notification = levelUpNotification,
             onDismiss = { showLevelUpDialog = false }
         )
     }
@@ -362,65 +360,96 @@ fun WarriorCard(playerStats: PlayerStats) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(160.dp),
+            .height(180.dp),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF251C2D))
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF251C2D)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(20.dp)
+                .background(
+                    brush = Brush.linearGradient(
+                        listOf(
+                            Color(0xFF251C2D),
+                            Color(0xFF3A2E3A)
+                        )
+                    )
+                )
         ) {
-            Box(
+            Row(
                 modifier = Modifier
-                    .size(100.dp)
-                    .background(
-                        brush = Brush.linearGradient(
-                            listOf(Color(0xFFD4AF37), Color(0xFFF0E68C))
+                    .fillMaxSize()
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                // Warrior Avatar Circle
+                Box(
+                    modifier = Modifier
+                        .size(120.dp)
+                        .background(
+                            brush = Brush.linearGradient(
+                                listOf(Color(0xFFD4AF37), Color(0xFFF0E68C))
+                            ),
+                            shape = CircleShape
                         ),
-                        shape = RoundedCornerShape(20.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.Crown,
-                    contentDescription = null,
-                    tint = Color(0xFF1A1200),
-                    modifier = Modifier.size(56.dp)
-                )
-            }
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "Level ${playerStats.level}",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFFD4AF37)
-                )
-                Text(
-                    text = playerStats.getTitleByLevel(),
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFFF4EADC)
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.EmojiEvents,
-                        contentDescription = null,
-                        tint = Color(0xFFD4AF37),
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.size(6.dp))
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
-                        text = "${playerStats.totalXpEarned} Total XP",
-                        color = Color(0xFFD8C89A),
-                        style = MaterialTheme.typography.bodyMedium
+                        text = "Lvl ${playerStats.level}",
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 32.sp,
+                        color = Color(0xFF1A1200)
                     )
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = playerStats.getTitleByLevel(),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFFF4EADC)
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.EmojiEvents,
+                            contentDescription = null,
+                            tint = Color(0xFFD4AF37),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = "${playerStats.totalXpEarned} XP",
+                            color = Color(0xFFD8C89A),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.LocalFireDepartment,
+                            contentDescription = null,
+                            tint = Color(0xFFF0A020),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = "${playerStats.streak} Day Streak",
+                            color = Color(0xFFD8C89A),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }
@@ -446,7 +475,7 @@ fun LevelProgressCard(level: Int, currentXp: Int, xpForLevel: Int, progress: Flo
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "XP Progress",
+                    text = "⭐ XP Progress to Level ${level + 1}",
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFFF4EADC)
                 )
@@ -464,8 +493,7 @@ fun LevelProgressCard(level: Int, currentXp: Int, xpForLevel: Int, progress: Flo
                     .fillMaxWidth()
                     .height(12.dp),
                 color = Color(0xFFD4AF37),
-                trackColor = Color(0xFF3A2E1F),
-                drawStopIndicator = {}
+                trackColor = Color(0xFF3A2E1F)
             )
 
             Text(
@@ -486,12 +514,14 @@ fun StatCard(label: String, value: String, accent: Color) {
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = label,
                 color = Color(0xFFD8C89A),
-                style = MaterialTheme.typography.labelMedium
+                style = MaterialTheme.typography.labelMedium,
+                textAlign = TextAlign.Center
             )
             Text(
                 text = value,
@@ -504,7 +534,7 @@ fun StatCard(label: String, value: String, accent: Color) {
 }
 
 @Composable
-fun DailyQuestPrompt(onAddDaily: () -> Unit) {
+fun DailyQuestCard(onAddDaily: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF3A2E1F)),
@@ -521,16 +551,16 @@ fun DailyQuestPrompt(onAddDaily: () -> Unit) {
                 Icons.Default.LocalFireDepartment,
                 contentDescription = null,
                 tint = Color(0xFFF0A020),
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(28.dp)
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "No Daily Quest Today!",
+                    text = "🔥 Daily Quest",
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFFF4EADC)
                 )
                 Text(
-                    text = "Complete one for extra XP",
+                    text = "Earn 50 XP for today's special quest",
                     color = Color(0xFFD8C89A),
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -540,32 +570,22 @@ fun DailyQuestPrompt(onAddDaily: () -> Unit) {
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD4AF37)),
                 modifier = Modifier.height(36.dp)
             ) {
-                Text("Add", color = Color(0xFF1A1200), fontWeight = FontWeight.Bold)
+                Text("Start", color = Color(0xFF1A1200), fontWeight = FontWeight.Bold)
             }
         }
     }
 }
 
 @Composable
-fun QuestCard(
+fun QuestCardUI(
     quest: QuestData,
     onToggle: (QuestData) -> Unit,
     onDelete: () -> Unit
 ) {
-    val scale by animateFloatAsState(
-        targetValue = if (quest.completed) 0.95f else 1f,
-        animationSpec = spring()
-    )
-
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            },
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (quest.completed) Color(0xFF2A2432) else Color(0xFF1E1A26")
+            containerColor = if (quest.completed) Color(0xFF2A2432) else Color(0xFF1E1A26)
         ),
         shape = RoundedCornerShape(18.dp)
     ) {
@@ -588,20 +608,19 @@ fun QuestCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = quest.title,
-                    color = Color(0xFFF4EADC),
+                    color = if (quest.completed) Color(0xFF999999) else Color(0xFFF4EADC),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        if (quest.isDaily) Icons.Default.LocalFireDepartment else Icons.Default.EmojiEvents,
-                        contentDescription = null,
-                        tint = if (quest.isDaily) Color(0xFFF0A020) else Color(0xFFD4AF37),
-                        modifier = Modifier.size(14.dp)
+                    Text(
+                        text = if (quest.isDaily) "🔥 Daily" else "⚔️ Quest",
+                        color = Color(0xFFD8C89A),
+                        style = MaterialTheme.typography.bodySmall
                     )
                     Spacer(modifier = Modifier.size(6.dp))
                     Text(
-                        text = "${quest.xp} XP",
+                        text = "• ${quest.xp} XP",
                         color = Color(0xFFD8C89A),
                         style = MaterialTheme.typography.bodySmall
                     )
@@ -623,7 +642,7 @@ fun QuestCard(
                     text = if (quest.completed) "✓" else "✕",
                     color = if (quest.completed) Color(0xFFBDE2EA) else Color(0xFFF0D7A5),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp
+                    fontSize = 14.sp
                 )
             }
         }
@@ -647,7 +666,7 @@ fun AddQuestDialog(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "Add New Quest",
+                    text = "⚔️ Create New Quest",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFFF4EADC)
@@ -657,7 +676,7 @@ fun AddQuestDialog(
                     value = questTitle,
                     onValueChange = { questTitle = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Quest name") },
+                    label = { Text("What's your quest?") },
                     singleLine = true,
                     textStyle = MaterialTheme.typography.bodyLarge
                 )
@@ -687,51 +706,44 @@ fun AddQuestDialog(
 }
 
 @Composable
-fun LevelUpDialog(newLevel: Int, onDismiss: () -> Unit) {
-    var showAnimation by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        showAnimation = true
-    }
-
+fun LevelUpDialog(
+    newLevel: Int,
+    notification: String,
+    onDismiss: () -> Unit
+) {
     Dialog(onDismissRequest = onDismiss) {
         Card(
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF251C2D))
         ) {
             Column(
-                modifier = Modifier.padding(20.dp),
+                modifier = Modifier.padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                AnimatedVisibility(
-                    visible = showAnimation,
-                    enter = scaleIn() + fadeIn(),
-                    exit = scaleOut() + fadeOut()
-                ) {
-                    Icon(
-                        Icons.Default.Star,
-                        contentDescription = null,
-                        tint = Color(0xFFD4AF37),
-                        modifier = Modifier.size(80.dp)
-                    )
-                }
+                Icon(
+                    Icons.Default.Star,
+                    contentDescription = null,
+                    tint = Color(0xFFD4AF37),
+                    modifier = Modifier.size(80.dp)
+                )
 
                 Text(
-                    text = "LEVEL UP!",
+                    text = "⭐ LEVEL UP! ⭐",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color(0xFFD4AF37)
                 )
 
                 Text(
-                    text = "You reached Level $newLevel",
+                    text = "Level $newLevel",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = Color(0xFFF4EADC)
+                    color = Color(0xFFF4EADC),
+                    fontWeight = FontWeight.Bold
                 )
 
                 Text(
-                    text = "You are becoming a legend!",
+                    text = "You're becoming a legend!",
                     color = Color(0xFFD8C89A),
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -752,6 +764,6 @@ fun LevelUpDialog(newLevel: Int, onDismiss: () -> Unit) {
 @Composable
 fun MedievalQuestWinTrackerPreview() {
     MedievalQuestWinTrackerTheme {
-        // Preview placeholder
+        // Preview
     }
 }

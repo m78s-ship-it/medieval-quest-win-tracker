@@ -1,7 +1,6 @@
 package com.example.medievalquestwintracker
 
 import android.content.Context
-import android.media.MediaPlayer
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -16,6 +15,7 @@ import java.time.format.DateTimeFormatter
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "quest_data")
 
+@Serializable
 data class PlayerStats(
     val level: Int = 1,
     val xp: Int = 0,
@@ -25,13 +25,13 @@ data class PlayerStats(
     val title: String = "Novice Adventurer"
 ) {
     fun getTitleByLevel(): String = when {
-        level >= 50 -> "Legendary Hero"
-        level >= 40 -> "Grand Champion"
-        level >= 30 -> "Noble Knight"
-        level >= 20 -> "Seasoned Warrior"
-        level >= 10 -> "Battle-Hardened Fighter"
-        level >= 5 -> "Skilled Squire"
-        else -> "Novice Adventurer"
+        level >= 50 -> "🐉 Legendary Hero"
+        level >= 40 -> "👑 Grand Champion"
+        level >= 30 -> "🛡️ Noble Knight"
+        level >= 20 -> "⚔️ Seasoned Warrior"
+        level >= 10 -> "🗡️ Battle-Hardened"
+        level >= 5 -> "📚 Skilled Squire"
+        else -> "🌟 Novice Adventurer"
     }
 
     fun getXpForNextLevel(): Int = level * 100
@@ -82,38 +82,6 @@ class StorageManager(private val context: Context) {
         context.dataStore.edit { preferences ->
             preferences[QUESTS_KEY] = JSON.encodeToString(quests)
         }
-    }
-}
-
-object SoundManager {
-    private var mediaPlayer: MediaPlayer? = null
-
-    fun playLevelUpSound(context: Context) {
-        playSound(context, R.raw.level_up)
-    }
-
-    fun playQuestCompleteSound(context: Context) {
-        playSound(context, R.raw.quest_complete)
-    }
-
-    fun playButtonClickSound(context: Context) {
-        playSound(context, R.raw.button_click)
-    }
-
-    private fun playSound(context: Context, resId: Int) {
-        try {
-            mediaPlayer?.release()
-            mediaPlayer = MediaPlayer.create(context, resId).apply {
-                start()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    fun release() {
-        mediaPlayer?.release()
-        mediaPlayer = null
     }
 }
 
